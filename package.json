@@ -14,6 +14,7 @@
     "@prisma/adapter-libsql": "^7.8.0",
     "@prisma/client": "^7.8.0",
     "axios": "^1.15.2",
+    "cheerio": "^1.2.0",
     "lucide-react": "^1.9.0",
     "next": "16.2.4",
     "oauth-1.0a": "^2.2.6",
