@@ -1,0 +1,51 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Card {
+  id              String    @id @default(cuid())
+  name            String
+  cardNumber      String
+  expansion       String
+  game            String    @default("One Piece")
+  condition       String    @default("NM")
+  language        String    @default("EN")
+  quantity        Int       @default(1)
+  foil            Boolean   @default(false)
+  imageUrl        String?
+  cardmarketId    String?
+  lastPrice       Float?
+  lastPriceUpdate DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  deckCards DeckCard[]
+}
+
+model Deck {
+  id          String     @id @default(cuid())
+  name        String
+  game        String     @default("One Piece")
+  description String?
+  format      String?
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+
+  deckCards DeckCard[]
+}
+
+model DeckCard {
+  id       String @id @default(cuid())
+  quantity Int    @default(1)
+  cardId   String
+  deckId   String
+
+  card Card @relation(fields: [cardId], references: [id], onDelete: Cascade)
+  deck Deck @relation(fields: [deckId], references: [id], onDelete: Cascade)
+
+  @@unique([deckId, cardId])
+}
