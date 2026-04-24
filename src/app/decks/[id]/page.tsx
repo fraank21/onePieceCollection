@@ -59,8 +59,8 @@ export default function DeckDetailPage() {
   if (loading) return <div className="text-center py-24 text-gray-500">Cargando...</div>;
   if (!deck) return null;
 
-  const totalCards = deck.deckCards.reduce((s, dc) => s + dc.quantity, 0);
-  const totalValue = deck.deckCards.reduce((s, dc) => s + (dc.card.lastPrice ?? 0) * dc.quantity, 0);
+  const totalCards = deck.deckCards.reduce((s: number, dc) => s + dc.quantity, 0);
+  const totalValue = deck.deckCards.reduce((s: number, dc) => s + (dc.card.lastPrice ?? 0) * dc.quantity, 0);
 
   // Cards already in deck
   const deckCardIds = new Set(deck.deckCards.map((dc) => dc.cardId));

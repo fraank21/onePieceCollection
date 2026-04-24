@@ -23,7 +23,7 @@ export async function GET(req: NextRequest) {
   });
 
   const totalValue = cards.reduce(
-    (sum, c) => sum + (c.lastPrice ?? 0) * c.quantity,
+    (sum: number, c) => sum + (c.lastPrice ?? 0) * c.quantity,
     0
   );
 

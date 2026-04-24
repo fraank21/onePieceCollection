@@ -60,7 +60,7 @@ export default function CollectionPage() {
     }
   }
 
-  const totalCards = cards.reduce((s, c) => s + c.quantity, 0);
+  const totalCards = cards.reduce((s: number, c) => s + c.quantity, 0);
 
   return (
     <>
