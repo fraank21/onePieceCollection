@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
-import type { Card } from "@prisma/client";
 
 export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url);
@@ -24,7 +23,7 @@ export async function GET(req: NextRequest) {
   });
 
   const totalValue = cards.reduce(
-    (sum: number, c: Card) => sum + (c.lastPrice ?? 0) * c.quantity,
+    (sum: number, c: typeof cards[number]) => sum + (c.lastPrice ?? 0) * c.quantity,
     0
   );
 
