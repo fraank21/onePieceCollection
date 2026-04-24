@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import { ArrowLeft, Plus, Trash2, Search } from "lucide-react";
 import Link from "next/link";
-import type { Deck, Card } from "@/types";
+import type { Deck, Card, DeckCard } from "@/types";
 
 export default function DeckDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -59,8 +59,8 @@ export default function DeckDetailPage() {
   if (loading) return <div className="text-center py-24 text-gray-500">Cargando...</div>;
   if (!deck) return null;
 
-  const totalCards = deck.deckCards.reduce((s: number, dc) => s + dc.quantity, 0);
-  const totalValue = deck.deckCards.reduce((s: number, dc) => s + (dc.card.lastPrice ?? 0) * dc.quantity, 0);
+  const totalCards = deck.deckCards.reduce((s: number, dc: DeckCard) => s + dc.quantity, 0);
+  const totalValue = deck.deckCards.reduce((s: number, dc: DeckCard) => s + (dc.card.lastPrice ?? 0) * dc.quantity, 0);
 
   // Cards already in deck
   const deckCardIds = new Set(deck.deckCards.map((dc) => dc.cardId));

@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { Plus, Trash2, BookOpen, ChevronRight } from "lucide-react";
-import type { Deck } from "@/types";
+import type { Deck, DeckCard } from "@/types";
 import { GAMES } from "@/types";
 
 export default function DecksPage() {
@@ -140,9 +140,9 @@ export default function DecksPage() {
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {decks.map((deck) => {
-            const cardCount = deck.deckCards.reduce((s: number, dc) => s + dc.quantity, 0);
+            const cardCount = deck.deckCards.reduce((s: number, dc: DeckCard) => s + dc.quantity, 0);
             const value = deck.deckCards.reduce(
-              (s: number, dc) => s + (dc.card.lastPrice ?? 0) * dc.quantity,
+              (s: number, dc: DeckCard) => s + (dc.card.lastPrice ?? 0) * dc.quantity,
               0
             );
             return (
