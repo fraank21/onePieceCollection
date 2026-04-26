@@ -8,6 +8,7 @@ interface Props {
   cards: Card[];
   onDelete: (id: string) => void;
   onQuantityChange: (id: string, quantity: number) => void;
+  onPriceChange: (id: string, price: number) => void;
 }
 
 const CONDITION_COLOR: Record<string, string> = {
@@ -20,8 +21,22 @@ const CONDITION_COLOR: Record<string, string> = {
   PO: "text-gray-500",
 };
 
-export default function CardGrid({ cards, onDelete, onQuantityChange }: Props) {
+export default function CardGrid({ cards, onDelete, onQuantityChange, onPriceChange }: Props) {
   const [updating, setUpdating] = useState<string | null>(null);
+  const [editingPrice, setEditingPrice] = useState<string | null>(null);
+  const [priceInput, setPriceInput] = useState("");
+
+  async function handlePriceSave(card: Card) {
+    const price = parseFloat(priceInput.replace(",", "."));
+    setEditingPrice(null);
+    if (isNaN(price) || price < 0) return;
+    await fetch(`/api/cards/${card.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lastPrice: price }),
+    });
+    onPriceChange(card.id, price);
+  }
 
   async function handleQuantity(card: Card, delta: number) {
     const next = Math.max(1, card.quantity + delta);
@@ -82,12 +97,27 @@ export default function CardGrid({ cards, onDelete, onQuantityChange }: Props) {
               <span className={`text-xs font-bold ${CONDITION_COLOR[card.condition] ?? "text-gray-400"}`}>
                 {card.condition}
               </span>
-              {card.lastPrice != null ? (
-                <span className="text-xs text-emerald-400 font-medium">
-                  {card.lastPrice.toFixed(2)} €
-                </span>
+              {editingPrice === card.id ? (
+                <input
+                  autoFocus
+                  className="w-16 bg-gray-700 border border-emerald-600 rounded px-1 text-xs text-emerald-400 text-right focus:outline-none"
+                  value={priceInput}
+                  onChange={(e) => setPriceInput(e.target.value)}
+                  onBlur={() => handlePriceSave(card)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handlePriceSave(card);
+                    if (e.key === "Escape") setEditingPrice(null);
+                  }}
+                  placeholder="0.00"
+                />
               ) : (
-                <span className="text-xs text-gray-600">—</span>
+                <button
+                  onClick={() => { setEditingPrice(card.id); setPriceInput(card.lastPrice?.toFixed(2) ?? ""); }}
+                  className="text-xs text-emerald-400 font-medium hover:text-emerald-300 hover:underline transition-colors"
+                  title="Haz clic para editar el precio"
+                >
+                  {card.lastPrice != null ? `${card.lastPrice.toFixed(2)} €` : "— €"}
+                </button>
               )}
             </div>
 
