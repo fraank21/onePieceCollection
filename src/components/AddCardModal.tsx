@@ -10,7 +10,20 @@ interface Props {
   onSaved: () => void;
 }
 
-const EMPTY: Record<string, string | number | boolean> = {
+interface FormState {
+  name: string;
+  cardNumber: string;
+  expansion: string;
+  game: string;
+  condition: Condition;
+  language: Language;
+  quantity: number;
+  foil: boolean;
+  imageUrl: string;
+  cardmarketId: string;
+}
+
+const EMPTY: FormState = {
   name: "",
   cardNumber: "",
   expansion: "",
@@ -23,19 +36,82 @@ const EMPTY: Record<string, string | number | boolean> = {
   cardmarketId: "",
 };
 
+const GAME_SLUG_MAP: Record<string, string> = {
+  OnePiece: "One Piece",
+  Magic: "Magic: The Gathering",
+  YuGiOh: "Yu-Gi-Oh!",
+  Pokemon: "Pokemon",
+  Digimon: "Digimon",
+  Lorcana: "Lorcana",
+};
+
+function parseCardmarketUrl(raw: string): Partial<FormState> | null {
+  try {
+    const { pathname } = new URL(raw.trim());
+    // /es/OnePiece/Products/Singles/Adventure-on-Kamis-Island/Roronoa-Zoro-EB04-007-V1
+    const parts = pathname.split("/").filter(Boolean);
+    if (parts.length < 6 || parts[2] !== "Products" || parts[3] !== "Singles") return null;
+
+    const gameSlug = parts[1];
+    const expansionSlug = parts[4];
+    const cardSlug = parts[5];
+
+    const game = GAME_SLUG_MAP[gameSlug] ?? "One Piece";
+    const expansion = expansionSlug.replace(/-/g, " ");
+
+    // Match card number like OP01-001, EB04-007, ST01-001, P-001
+    const numMatch = cardSlug.match(/([A-Z]{1,4}\d{0,4}-\d{2,4})/);
+    const cardNumber = numMatch ? numMatch[1] : "";
+
+    const namePart = cardNumber
+      ? cardSlug.substring(0, cardSlug.indexOf(cardNumber)).replace(/-+$/, "")
+      : cardSlug.replace(/-V\d+$/, "");
+    const name = namePart.replace(/-/g, " ").trim();
+
+    // Normalize to /en/ and store path only
+    const cardmarketId = `/en/${gameSlug}/Products/Singles/${expansionSlug}/${cardSlug}`;
+
+    return { game, expansion, cardNumber, name, cardmarketId };
+  } catch {
+    return null;
+  }
+}
+
 export default function AddCardModal({ onClose, onSaved }: Props) {
-  const [form, setForm] = useState(EMPTY);
+  const [url, setUrl] = useState("");
+  const [urlError, setUrlError] = useState("");
+  const [form, setForm] = useState<FormState>(EMPTY);
+  const [parsed, setParsed] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  function set(key: string, value: string | number | boolean) {
+  function handleUrlChange(value: string) {
+    setUrl(value);
+    setUrlError("");
+    if (!value.trim()) {
+      setForm(EMPTY);
+      setParsed(false);
+      return;
+    }
+    const result = parseCardmarketUrl(value);
+    if (result) {
+      setForm((f) => ({ ...f, ...result }));
+      setParsed(true);
+      setUrlError("");
+    } else {
+      setParsed(false);
+      setUrlError("URL no reconocida. Debe ser una página de producto de Cardmarket.");
+    }
+  }
+
+  function set<K extends keyof FormState>(key: K, value: FormState[K]) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!form.name || !form.cardNumber || !form.expansion) {
-      setError("Nombre, número y expansión son obligatorios.");
+      setError("Pega una URL de Cardmarket válida o rellena nombre, número y expansión.");
       return;
     }
     setSaving(true);
@@ -43,7 +119,6 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
     try {
       const payload = {
         ...form,
-        quantity: Number(form.quantity),
         imageUrl: form.imageUrl || null,
         cardmarketId: form.cardmarketId || null,
       };
@@ -71,21 +146,48 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-5">
           {error && (
             <p className="text-red-400 text-sm bg-red-950/50 border border-red-800 rounded-lg px-3 py-2">
               {error}
             </p>
           )}
 
+          {/* URL input */}
+          <div>
+            <label className="block text-xs text-gray-400 mb-1">
+              URL de Cardmarket
+            </label>
+            <input
+              autoFocus
+              className={`w-full bg-gray-800 border rounded-lg px-3 py-2 text-sm focus:outline-none transition-colors ${
+                urlError
+                  ? "border-red-600 focus:border-red-500"
+                  : parsed
+                  ? "border-emerald-700 focus:border-emerald-500"
+                  : "border-gray-700 focus:border-red-500"
+              }`}
+              value={url}
+              onChange={(e) => handleUrlChange(e.target.value)}
+              placeholder="https://www.cardmarket.com/es/OnePiece/Products/Singles/..."
+            />
+            {urlError && <p className="text-xs text-red-400 mt-1">{urlError}</p>}
+            {parsed && (
+              <p className="text-xs text-emerald-400 mt-1">
+                Carta detectada — revisa los campos y ajusta si hace falta
+              </p>
+            )}
+          </div>
+
+          {/* Auto-filled card info */}
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-xs text-gray-400 mb-1">Nombre *</label>
               <input
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.name)}
+                value={form.name}
                 onChange={(e) => set("name", e.target.value)}
-                placeholder="Monkey D. Luffy"
+                placeholder="Roronoa Zoro"
               />
             </div>
 
@@ -93,9 +195,9 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
               <label className="block text-xs text-gray-400 mb-1">Número *</label>
               <input
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.cardNumber)}
+                value={form.cardNumber}
                 onChange={(e) => set("cardNumber", e.target.value)}
-                placeholder="OP01-001"
+                placeholder="EB04-007"
               />
             </div>
 
@@ -103,9 +205,9 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
               <label className="block text-xs text-gray-400 mb-1">Expansión *</label>
               <input
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.expansion)}
+                value={form.expansion}
                 onChange={(e) => set("expansion", e.target.value)}
-                placeholder="Romance Dawn"
+                placeholder="Adventure on Kamis Island"
               />
             </div>
 
@@ -113,12 +215,10 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
               <label className="block text-xs text-gray-400 mb-1">Juego</label>
               <select
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.game)}
+                value={form.game}
                 onChange={(e) => set("game", e.target.value)}
               >
-                {GAMES.map((g) => (
-                  <option key={g} value={g}>{g}</option>
-                ))}
+                {GAMES.map((g) => <option key={g} value={g}>{g}</option>)}
               </select>
             </div>
 
@@ -128,8 +228,8 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
                 type="number"
                 min={1}
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={Number(form.quantity)}
-                onChange={(e) => set("quantity", e.target.value)}
+                value={form.quantity}
+                onChange={(e) => set("quantity", Number(e.target.value))}
               />
             </div>
 
@@ -137,7 +237,7 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
               <label className="block text-xs text-gray-400 mb-1">Condición</label>
               <select
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.condition)}
+                value={form.condition}
                 onChange={(e) => set("condition", e.target.value as Condition)}
               >
                 {CONDITIONS.map((c) => (
@@ -150,7 +250,7 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
               <label className="block text-xs text-gray-400 mb-1">Idioma</label>
               <select
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.language)}
+                value={form.language}
                 onChange={(e) => set("language", e.target.value as Language)}
               >
                 {LANGUAGES.map((l) => (
@@ -164,7 +264,7 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
                 id="foil"
                 type="checkbox"
                 className="w-4 h-4 accent-red-500"
-                checked={Boolean(form.foil)}
+                checked={form.foil}
                 onChange={(e) => set("foil", e.target.checked)}
               />
               <label htmlFor="foil" className="text-sm">Foil / Alternate Art</label>
@@ -174,24 +274,14 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
               <label className="block text-xs text-gray-400 mb-1">URL de imagen (opcional)</label>
               <input
                 className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.imageUrl)}
+                value={form.imageUrl}
                 onChange={(e) => set("imageUrl", e.target.value)}
                 placeholder="https://..."
               />
             </div>
-
-            <div className="col-span-2">
-              <label className="block text-xs text-gray-400 mb-1">ID de Cardmarket (opcional)</label>
-              <input
-                className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-red-500"
-                value={String(form.cardmarketId)}
-                onChange={(e) => set("cardmarketId", e.target.value)}
-                placeholder="123456"
-              />
-            </div>
           </div>
 
-          <div className="flex gap-3 pt-2">
+          <div className="flex gap-3 pt-1">
             <button
               type="button"
               onClick={onClose}
