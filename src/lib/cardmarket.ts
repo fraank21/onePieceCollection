@@ -39,20 +39,38 @@ export async function getCardmarketProductPrice(productId: string) {
   let low: number | null = null;
   let trend: number | null = null;
 
+  // Try dt/dd definition lists (Cardmarket desktop layout)
   $("dt").each((_, dt) => {
     const label = $(dt).text().toLowerCase().trim();
     const value = $(dt).next("dd").text().trim();
     if (!value) return;
     if (label.includes("trend")) trend = parseEuroPrice(value);
-    if (
-      label.includes("low") ||
-      label.includes("mínimo") ||
-      label.includes("desde") ||
-      label.includes("from")
-    ) {
+    if (label.includes("low") || label.includes("mínimo") || label.includes("desde") || label.includes("from")) {
       low = parseEuroPrice(value);
     }
   });
+
+  // Try table rows as fallback
+  if (!low && !trend) {
+    $("tr").each((_, tr) => {
+      const cells = $(tr).find("td, th");
+      if (cells.length < 2) return;
+      const label = $(cells[0]).text().toLowerCase().trim();
+      const value = $(cells[1]).text().trim();
+      if (label.includes("trend")) trend = parseEuroPrice(value);
+      if (label.includes("low") || label.includes("mínimo") || label.includes("from")) {
+        low = parseEuroPrice(value);
+      }
+    });
+  }
+
+  // Regex fallback: scan raw HTML for price patterns near keywords
+  if (!low && !trend) {
+    const lowMatch = html.match(/(?:low|m[ií]nimo|desde|from)[^€\d]{0,30}(\d+[,.]\d{1,2})\s*€/i);
+    if (lowMatch) low = parseEuroPrice(lowMatch[1]);
+    const trendMatch = html.match(/trend[^€\d]{0,30}(\d+[,.]\d{1,2})\s*€/i);
+    if (trendMatch) trend = parseEuroPrice(trendMatch[1]);
+  }
 
   return { priceGuide: { LOW: low, TREND: trend } };
 }

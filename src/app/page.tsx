@@ -40,6 +40,15 @@ export default function CollectionPage() {
     fetchCards();
   }
 
+  function handleQuantityChange(id: string, quantity: number) {
+    setCards((prev) => prev.map((c) => (c.id === id ? { ...c, quantity } : c)));
+    setTotalValue((prev) => {
+      const card = cards.find((c) => c.id === id);
+      if (!card) return prev;
+      return prev - (card.lastPrice ?? 0) * card.quantity + (card.lastPrice ?? 0) * quantity;
+    });
+  }
+
   async function handleUpdatePrices() {
     setUpdatingPrices(true);
     setPriceMessage("");
@@ -139,7 +148,7 @@ export default function CollectionPage() {
       {loading ? (
         <div className="text-center py-24 text-gray-500">Cargando...</div>
       ) : (
-        <CardGrid cards={cards} onDelete={handleDelete} />
+        <CardGrid cards={cards} onDelete={handleDelete} onQuantityChange={handleQuantityChange} />
       )}
     </>
   );

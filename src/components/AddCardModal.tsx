@@ -82,10 +82,11 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
   const [urlError, setUrlError] = useState("");
   const [form, setForm] = useState<FormState>(EMPTY);
   const [parsed, setParsed] = useState(false);
+  const [fetchingImage, setFetchingImage] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
 
-  function handleUrlChange(value: string) {
+  async function handleUrlChange(value: string) {
     setUrl(value);
     setUrlError("");
     if (!value.trim()) {
@@ -97,7 +98,18 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
     if (result) {
       setForm((f) => ({ ...f, ...result }));
       setParsed(true);
-      setUrlError("");
+
+      // Auto-fetch card image from Cardmarket og:image
+      setFetchingImage(true);
+      try {
+        const res = await fetch(`/api/card-info?url=${encodeURIComponent(value.trim())}`);
+        const data = await res.json();
+        if (data.imageUrl) setForm((f) => ({ ...f, imageUrl: data.imageUrl }));
+      } catch {
+        // image fetch failing is non-critical
+      } finally {
+        setFetchingImage(false);
+      }
     } else {
       setParsed(false);
       setUrlError("URL no reconocida. Debe ser una página de producto de Cardmarket.");
@@ -174,7 +186,7 @@ export default function AddCardModal({ onClose, onSaved }: Props) {
             {urlError && <p className="text-xs text-red-400 mt-1">{urlError}</p>}
             {parsed && (
               <p className="text-xs text-emerald-400 mt-1">
-                Carta detectada — revisa los campos y ajusta si hace falta
+                {fetchingImage ? "Buscando imagen..." : "Carta detectada — revisa los campos y ajusta si hace falta"}
               </p>
             )}
           </div>

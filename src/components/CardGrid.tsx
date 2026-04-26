@@ -1,11 +1,13 @@
 "use client";
 
-import { Trash2, Sparkles } from "lucide-react";
+import { useState } from "react";
+import { Trash2, Sparkles, Minus, Plus } from "lucide-react";
 import type { Card } from "@/types";
 
 interface Props {
   cards: Card[];
   onDelete: (id: string) => void;
+  onQuantityChange: (id: string, quantity: number) => void;
 }
 
 const CONDITION_COLOR: Record<string, string> = {
@@ -18,7 +20,22 @@ const CONDITION_COLOR: Record<string, string> = {
   PO: "text-gray-500",
 };
 
-export default function CardGrid({ cards, onDelete }: Props) {
+export default function CardGrid({ cards, onDelete, onQuantityChange }: Props) {
+  const [updating, setUpdating] = useState<string | null>(null);
+
+  async function handleQuantity(card: Card, delta: number) {
+    const next = Math.max(1, card.quantity + delta);
+    if (next === card.quantity) return;
+    setUpdating(card.id);
+    await fetch(`/api/cards/${card.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ quantity: next }),
+    });
+    onQuantityChange(card.id, next);
+    setUpdating(null);
+  }
+
   if (cards.length === 0) {
     return (
       <div className="text-center py-24 text-gray-500">
@@ -54,17 +71,13 @@ export default function CardGrid({ cards, onDelete }: Props) {
                 <Sparkles size={10} className="text-yellow-400" />
               </div>
             )}
-            {card.quantity > 1 && (
-              <div className="absolute bottom-1 right-1 bg-black/70 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold">
-                {card.quantity}
-              </div>
-            )}
           </div>
 
           {/* Info */}
           <div className="p-2">
             <p className="text-xs font-medium truncate">{card.name}</p>
             <p className="text-xs text-gray-500 truncate">{card.cardNumber}</p>
+
             <div className="flex items-center justify-between mt-1">
               <span className={`text-xs font-bold ${CONDITION_COLOR[card.condition] ?? "text-gray-400"}`}>
                 {card.condition}
@@ -76,6 +89,27 @@ export default function CardGrid({ cards, onDelete }: Props) {
               ) : (
                 <span className="text-xs text-gray-600">—</span>
               )}
+            </div>
+
+            {/* Quantity controls */}
+            <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-800">
+              <button
+                onClick={() => handleQuantity(card, -1)}
+                disabled={updating === card.id || card.quantity <= 1}
+                className="w-5 h-5 flex items-center justify-center rounded bg-gray-800 hover:bg-gray-700 disabled:opacity-30 transition-colors"
+              >
+                <Minus size={10} />
+              </button>
+              <span className="text-xs font-bold text-gray-300">
+                {updating === card.id ? "..." : card.quantity}
+              </span>
+              <button
+                onClick={() => handleQuantity(card, +1)}
+                disabled={updating === card.id}
+                className="w-5 h-5 flex items-center justify-center rounded bg-gray-800 hover:bg-gray-700 disabled:opacity-30 transition-colors"
+              >
+                <Plus size={10} />
+              </button>
             </div>
           </div>
 
